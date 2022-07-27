@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -21,7 +22,7 @@ class _QRCodeGeneratorState extends State<QRCodeGeneratorScreen> {
   static const double _topSectionBottomPadding = 20.0;
   static const double _topSectionHeight = 50.0;
 
-  GlobalKey globalKey = GlobalKey();
+  final GlobalKey _globalKey = GlobalKey();
   String _dataString = "Hello from this QR";
   String? _inputErrorText = '';
   final TextEditingController _textController = TextEditingController();
@@ -82,6 +83,7 @@ class _QRCodeGeneratorState extends State<QRCodeGeneratorScreen> {
                 children: <Widget>[
                   Expanded(
                     child: TextField(
+                      style: const TextStyle(color: Colors.black),
                       controller: _textController,
                       decoration: InputDecoration(
                         hintText: "Enter a custom message",
@@ -100,7 +102,7 @@ class _QRCodeGeneratorState extends State<QRCodeGeneratorScreen> {
                         });
                       },
                     ),
-                  )
+                  ),
                 ],
               ),
             ),
@@ -108,7 +110,7 @@ class _QRCodeGeneratorState extends State<QRCodeGeneratorScreen> {
           Expanded(
             child: Center(
               child: RepaintBoundary(
-                key: globalKey,
+                key: _globalKey,
                 child: QrImage(
                   data: _dataString,
                   size: 0.5 * bodyHeight,
@@ -126,8 +128,33 @@ class _QRCodeGeneratorState extends State<QRCodeGeneratorScreen> {
               ),
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.only(left: 10.0),
+            child: ElevatedButton(
+              onPressed: _saveScreen,
+              child: const Text("Save"),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  _saveScreen() async {
+    RenderRepaintBoundary boundary =
+        _globalKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+    var image = await boundary.toImage(pixelRatio: 3.0);
+    ByteData? byteData = await (image.toByteData(format: ImageByteFormat.png));
+    Uint8List? pngBytes = byteData?.buffer.asUint8List();
+    //create file
+    final tempDir = await getTemporaryDirectory();
+    final file = File('${tempDir.path}/image_${DateTime.now()}.png');
+    await file.writeAsBytes(pngBytes!);
+
+    if (byteData != null) {
+      final result = await ImageGallerySaver.saveImage(pngBytes,
+          quality: 60, name: "image_${DateTime.now()}");
+      print(result);
+    }
   }
 }
